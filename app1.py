@@ -8,3 +8,4 @@ if Opciones == "Inicio":
     st.write("Alumno: Mario Alberto Ormeño Bobadilla")
     st.write("Especialización en Python for Analytics")
     st.write("2026")
+    
