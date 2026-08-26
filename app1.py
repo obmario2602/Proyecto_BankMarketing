@@ -12,9 +12,12 @@ if Seleccion == "Inicio":
     st.write("DATASET: Institución financiera que busca entender los factores que influyen en la aceptación de sus campañas de marketing. Durante los últimos 6 meses, la efectividad (e = (Ventas/Base)×100%) cayó de 12% a 8%, afectando los bonos de los ejecutivos comerciales.")
 elif Seleccion == "Carga del dataset":
     st.header("Cargar el dataset")
-    uploaded_file = st.file_uploader("Seleccione un archivo CSV", type=["csv"]
-try:
-    if uploaded_file.name.endswith(".csv"):
+    uploaded_file = st.file_uploader(
+        "Seleccione un archivo CSV o XLSX", type=["csv", "xlsx"]
+    )
+    if uploaded_file is not None:
+        try:
+            if uploaded_file.name.endswith(".csv"):
                 # Intentar leer con ';' (muy común en BankMarketing) o con ','
                 try:
                     df = pd.read_csv(uploaded_file, sep=";")
@@ -27,7 +30,9 @@ try:
 
             elif uploaded_file.name.endswith(".xlsx"):
                 df = pd.read_excel(uploaded_file)
-st.success("¡Archivo cargado correctamente!")
+
+            # 2. Validación de que el archivo fue cargado correctamente
+            st.success("¡Archivo cargado correctamente!")
 
             # 3. Mostrar vista previa del dataset (head)
             st.subheader("Vista previa del dataset (head):")
