@@ -11,7 +11,7 @@ if Seleccion == "Inicio":
     st.write("2026")
     st.write("DATASET: Institución financiera que busca entender los factores que influyen en la aceptación de sus campañas de marketing. Durante los últimos 6 meses, la efectividad (e = (Ventas/Base)×100%) cayó de 12% a 8%, afectando los bonos de los ejecutivos comerciales.")
 elif Seleccion == "Carga del dataset":
-    st.sidebar.subheader("Cargar el dataset")
+    st.header("Cargar el dataset")
     uploaded_file = st.file_uploader(
         "Seleccione un archivo CSV o XLSX", type=["csv", "xlsx"]
     )
