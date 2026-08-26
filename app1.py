@@ -93,13 +93,27 @@ elif Seleccion == "Análisis Exploratorio (EDA)":
         df = st.session_state["df"]
         clasif = clasificar_variables(df)
 
-        # Creación de pestañas para los ítems 1 al 5
-        tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        # Creación de pestañas para los Ítems 1 al 9
+        (
+            tab1,
+            tab2,
+            tab3,
+            tab4,
+            tab5,
+            tab6,
+            tab7,
+            tab8,
+            tab9,
+        ) = st.tabs([
             "1. Info General",
             "2. Clasificación",
-            "3. Estadísticas Descriptivas",
-            "4. Valores Faltantes",
-            "5. Distribución Numérica",
+            "3. Estadísticas",
+            "4. Faltantes",
+            "5. Dist. Numérica",
+            "6. Anál. Categórico",
+            "7. Bivariado (Num vs Cat)",
+            "8. Bivariado (Cat vs Cat)",
+            "9. Análisis Dinámico",
         ])
 
         # TAB 1: INFORMACIÓN GENERAL
@@ -132,42 +146,20 @@ elif Seleccion == "Análisis Exploratorio (EDA)":
         # TAB 3: ESTADÍSTICAS DESCRIPTIVAS
         with tab3:
             st.subheader("Ítem 3: Estadísticas descriptivas")
-            st.write(
-                "Resumen de medidas de tendencia central y dispersión mediante"
-                " `.describe()`."
-            )
-
             desc = df.describe().T
-            desc["mediana (50%)"] = df[clasif["numericas"]].median()
-
+            if clasif["cant_numericas"] > 0:
+                desc["mediana (50%)"] = df[clasif["numericas"]].median()
             st.dataframe(desc)
 
-            col_e1, col_e2 = st.columns(2)
-            with col_e1:
-                st.info(
-                    "**Medias vs Medianas:**\nSi la media supera con creces"
-                    " a la mediana, la variable presenta sesgo positivo por"
-                    " presencia de valores atípicos elevados."
-                )
-            with col_e2:
-                st.info(
-                    "**Dispersión (std):**\nUna desviación estándar amplia"
-                    " indica alta variabilidad de los datos respecto a su"
-                    " valor promedio."
-                )
-
-        # TAB 4: ANÁLISIS DE VALORES FALTANTES
+        # TAB 4: VALORES FALTANTES
         with tab4:
             st.subheader("Ítem 4: Análisis de valores faltantes")
-
             nulos_series = df.isnull().sum()
             df_nulos = pd.DataFrame(
                 {"Columna": nulos_series.index, "Nulos": nulos_series.values}
             )
             df_nulos["% Nulos"] = (df_nulos["Nulos"] / len(df) * 100).round(2)
-            df_nulos = df_nulos[df_nulos["Nulos"] > 0].sort_values(
-                by="Nulos", ascending=False
-            )
+            df_nulos = df_nulos[df_nulos["Nulos"] > 0]
 
             if df_nulos.empty:
                 st.success(
@@ -176,68 +168,179 @@ elif Seleccion == "Análisis Exploratorio (EDA)":
             else:
                 col_n1, col_n2 = st.columns([1, 2])
                 with col_n1:
-                    st.write("**Conteo de nulos:**")
                     st.dataframe(df_nulos)
-
                 with col_n2:
-                    st.write("**Visualización:**")
                     fig, ax = plt.subplots(figsize=(6, 3))
                     sns.barplot(
-                        data=df_nulos,
-                        x="% Nulos",
-                        y="Columna",
-                        palette="Reds_r",
-                        ax=ax,
+                        data=df_nulos, x="% Nulos", y="Columna", ax=ax
                     )
-                    ax.set_title("Porcentaje de Nulos por Variable")
                     st.pyplot(fig)
 
-            st.markdown(
-                "**Discusión breve:** Los datos faltantes en campañas bancarias"
-                " suelen originarse por campos opcionales en el registro de"
-                " clientes o fallas en el almacenamiento de interacciones."
-            )
-
-        # TAB 5: DISTRIBUCIÓN DE VARIABLES NUMÉRICAS
+        # TAB 5: DISTRIBUCIÓN NUMÉRICA
         with tab5:
             st.subheader("Ítem 5: Distribución de variables numéricas")
-
             if clasif["cant_numericas"] > 0:
                 var_sel = st.selectbox(
                     "Selecciona una variable numérica:", clasif["numericas"]
                 )
-                bins_val = st.slider("Número de barras (bins):", 5, 50, 20)
+                fig, ax = plt.subplots(figsize=(7, 3))
+                sns.histplot(df[var_sel], kde=True, ax=ax, color="skyblue")
+                st.pyplot(fig)
+
+        # TAB 6: ANÁLISIS DE VARIABLES CATEGÓRICAS
+        with tab6:
+            st.subheader("Ítem 6: Análisis de variables categóricas")
+            if clasif["cant_categoricas"] > 0:
+                var_cat = st.selectbox(
+                    "Selecciona una variable categórica:", clasif["categoricas"]
+                )
+
+                # Conteos y Proporciones
+                conteo = df[var_cat].value_counts()
+                proporcion = df[var_cat].value_counts(normalize=True) * 100
+                tabla_cat = pd.DataFrame(
+                    {"Frecuencia Absoluta": conteo, "Porcentaje (%)": proporcion}
+                )
+
+                col_c1, col_c2 = st.columns([1, 2])
+                with col_c1:
+                    st.write("**Conteos y Proporciones:**")
+                    st.dataframe(tabla_cat.round(2))
+
+                with col_c2:
+                    st.write("**Gráfico de Barras:**")
+                    fig, ax = plt.subplots(figsize=(7, 3.5))
+                    sns.barplot(
+                        x=conteo.index,
+                        y=conteo.values,
+                        ax=ax,
+                        palette="viridis",
+                    )
+                    plt.xticks(rotation=45)
+                    ax.set_title(f"Distribución de {var_cat}")
+                    st.pyplot(fig)
+            else:
+                st.info("No se encontraron variables categóricas.")
+
+        # TAB 7: ANÁLISIS BIVARIADO (NUMÉRICO VS CATEGÓRICO)
+        with tab7:
+            st.subheader(
+                "Ítem 7: Análisis bivariado (numérico vs categórico)"
+            )
+            if (
+                clasif["cant_numericas"] > 0
+                and clasif["cant_categoricas"] > 0
+            ):
+                col_biv1, col_biv2 = st.columns(2)
+                with col_biv1:
+                    var_num_b = st.selectbox(
+                        "Variable Numérica (ej. age, duration):",
+                        clasif["numericas"],
+                        key="biv_num",
+                    )
+                with col_biv2:
+                    var_cat_b = st.selectbox(
+                        "Variable Categórica (ej. y):",
+                        clasif["categoricas"],
+                        key="biv_cat",
+                    )
 
                 col_g1, col_g2 = st.columns([2, 1])
-
                 with col_g1:
                     fig, ax = plt.subplots(figsize=(7, 3.5))
-                    sns.histplot(
-                        df[var_sel],
-                        bins=bins_val,
-                        kde=True,
-                        color="royalblue",
-                        edgecolor="black",
+                    sns.boxplot(
+                        data=df,
+                        x=var_cat_b,
+                        y=var_num_b,
                         ax=ax,
+                        palette="Set2",
                     )
-                    ax.set_title(f"Histograma y curva KDE de: {var_sel}")
+                    ax.set_title(f"{var_num_b} según {var_cat_b}")
                     st.pyplot(fig)
 
                 with col_g2:
-                    st.write("**Interpretación visual:**")
-                    med = df[var_sel].mean()
-                    medn = df[var_sel].median()
-                    std_v = df[var_sel].std()
+                    st.write("**Resumen estadístico por grupo:**")
+                    resumen_biv = df.groupby(var_cat_b)[var_num_b].describe()
+                    st.dataframe(resumen_biv.round(2))
 
-                    st.write(f"• **Media:** {med:.2f}")
-                    st.write(f"• **Mediana:** {medn:.2f}")
-                    st.write(f"• **Desv. Estándar:** {std_v:.2f}")
+        # TAB 8: ANÁLISIS BIVARIADO (CATEGÓRICO VS CATEGÓRICO)
+        with tab8:
+            st.subheader(
+                "Ítem 8: Análisis bivariado (categórico vs categórico)"
+            )
+            if clasif["cant_categoricas"] >= 2:
+                col_c1_sel, col_c2_sel = st.columns(2)
+                with col_c1_sel:
+                    cat1 = st.selectbox(
+                        "Categoría 1 (ej. education, contact):",
+                        clasif["categoricas"],
+                        key="cat1",
+                    )
+                with col_c2_sel:
+                    cat2 = st.selectbox(
+                        "Categoría 2 (ej. y):", clasif["categoricas"], key="cat2"
+                    )
 
-                    if abs(med - medn) < (0.1 * std_v):
-                        st.success("Distribución con tendencia simétrica.")
-                    elif med > medn:
-                        st.warning("Sesgo a la derecha (valores altos).")
-                    else:
-                        st.info("Sesgo a la izquierda (valores bajos).")
+                # Tabla cruzada (Crosstab)
+                crosstab_res = pd.crosstab(
+                    df[cat1], df[cat2], normalize="index"
+                ) * 100
+
+                col_tab1, col_tab2 = st.columns([1, 2])
+                with col_tab1:
+                    st.write("**Proporciones por fila (%):**")
+                    st.dataframe(crosstab_res.round(2))
+
+                with col_tab2:
+                    fig, ax = plt.subplots(figsize=(7, 3.5))
+                    crosstab_res.plot(kind="bar", stacked=True, ax=ax, cmap="tab10")
+                    ax.set_ylabel("Porcentaje (%)")
+                    ax.set_title(f"Relación entre {cat1} y {cat2}")
+                    plt.xticks(rotation=45)
+                    st.pyplot(fig)
+
+        # TAB 9: ANÁLISIS BASADO EN PARÁMETROS SELECCIONADOS
+        with tab9:
+            st.subheader(
+                "Ítem 9: Análisis basado en parámetros seleccionados"
+            )
+            st.write(
+                "Filtra dinámicamente el dataset según las condiciones que"
+                " elijas."
+            )
+
+            col_p1, col_p2 = st.columns(2)
+
+            with col_p1:
+                # Selector dinámico de columnas categóricas para filtrar
+                col_filtro = st.selectbox(
+                    "Selecciona una columna para filtrar:", clasif["categoricas"]
+                )
+
+            with col_p2:
+                # Multiselect para elegir opciones específicas de esa columna
+                opciones_disponibles = df[col_filtro].dropna().unique().tolist()
+                opciones_sel = st.multiselect(
+                    f"Selecciona valores de '{col_filtro}':",
+                    options=opciones_disponibles,
+                    default=opciones_disponibles[:2] if len(opciones_disponibles) >= 2 else opciones_disponibles,
+                )
+
+            # Filtrar DataFrame
+            if opciones_sel:
+                df_filtrado = df[df[col_filtro].isin(opciones_sel)]
             else:
-                st.warning("No hay variables numéricas en este dataset.")
+                df_filtrado = df
+
+            # Métricas dinámicas del filtro
+            st.markdown("---")
+            m1, m2, m3 = st.columns(3)
+            m1.metric("Registros Filtrados", f"{len(df_filtrado):,}")
+            m2.metric(
+                "% del Total",
+                f"{(len(df_filtrado) / len(df) * 100):.2f}%",
+            )
+            m3.metric("Columnas", df_filtrado.shape[1])
+
+            st.write("**Vista previa de los datos filtrados:**")
+            st.dataframe(df_filtrado.head(10))
