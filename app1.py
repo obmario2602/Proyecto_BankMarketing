@@ -17,3 +17,8 @@ elif Seleccion == "Carga del dataset":
         df = pd.read_csv(uploaded_file)
         st.write("Vista previa del dataset:")
         st.dataframe(df.head())
+try:
+    if uploaded_file.name.endswith('.csv'):
+        df = pd.read_csv(uploaded_file)
+    elif uploaded_file.name.endswith('.xlsx'):
+        df = pd.read_excel(uploaded_file)
