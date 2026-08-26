@@ -93,7 +93,7 @@ elif Seleccion == "Análisis Exploratorio (EDA)":
         df = st.session_state["df"]
         clasif = clasificar_variables(df)
 
-        # Creación de pestañas para los Ítems 1 al 9
+        # Creación de pestañas para los 10 Ítems requeridos
         (
             tab1,
             tab2,
@@ -104,6 +104,7 @@ elif Seleccion == "Análisis Exploratorio (EDA)":
             tab7,
             tab8,
             tab9,
+            tab10,
         ) = st.tabs([
             "1. Info General",
             "2. Clasificación",
@@ -114,6 +115,7 @@ elif Seleccion == "Análisis Exploratorio (EDA)":
             "7. Bivariado (Num vs Cat)",
             "8. Bivariado (Cat vs Cat)",
             "9. Análisis Dinámico",
+            "10. Hallazgos Clave",
         ])
 
         # TAB 1: INFORMACIÓN GENERAL
@@ -194,8 +196,6 @@ elif Seleccion == "Análisis Exploratorio (EDA)":
                 var_cat = st.selectbox(
                     "Selecciona una variable categórica:", clasif["categoricas"]
                 )
-
-                # Conteos y Proporciones
                 conteo = df[var_cat].value_counts()
                 proporcion = df[var_cat].value_counts(normalize=True) * 100
                 tabla_cat = pd.DataFrame(
@@ -204,11 +204,8 @@ elif Seleccion == "Análisis Exploratorio (EDA)":
 
                 col_c1, col_c2 = st.columns([1, 2])
                 with col_c1:
-                    st.write("**Conteos y Proporciones:**")
                     st.dataframe(tabla_cat.round(2))
-
                 with col_c2:
-                    st.write("**Gráfico de Barras:**")
                     fig, ax = plt.subplots(figsize=(7, 3.5))
                     sns.barplot(
                         x=conteo.index,
@@ -217,10 +214,7 @@ elif Seleccion == "Análisis Exploratorio (EDA)":
                         palette="viridis",
                     )
                     plt.xticks(rotation=45)
-                    ax.set_title(f"Distribución de {var_cat}")
                     st.pyplot(fig)
-            else:
-                st.info("No se encontraron variables categóricas.")
 
         # TAB 7: ANÁLISIS BIVARIADO (NUMÉRICO VS CATEGÓRICO)
         with tab7:
@@ -234,13 +228,11 @@ elif Seleccion == "Análisis Exploratorio (EDA)":
                 col_biv1, col_biv2 = st.columns(2)
                 with col_biv1:
                     var_num_b = st.selectbox(
-                        "Variable Numérica (ej. age, duration):",
-                        clasif["numericas"],
-                        key="biv_num",
+                        "Variable Numérica:", clasif["numericas"], key="biv_num"
                     )
                 with col_biv2:
                     var_cat_b = st.selectbox(
-                        "Variable Categórica (ej. y):",
+                        "Variable Categórica:",
                         clasif["categoricas"],
                         key="biv_cat",
                     )
@@ -255,11 +247,8 @@ elif Seleccion == "Análisis Exploratorio (EDA)":
                         ax=ax,
                         palette="Set2",
                     )
-                    ax.set_title(f"{var_num_b} según {var_cat_b}")
                     st.pyplot(fig)
-
                 with col_g2:
-                    st.write("**Resumen estadístico por grupo:**")
                     resumen_biv = df.groupby(var_cat_b)[var_num_b].describe()
                     st.dataframe(resumen_biv.round(2))
 
@@ -272,75 +261,115 @@ elif Seleccion == "Análisis Exploratorio (EDA)":
                 col_c1_sel, col_c2_sel = st.columns(2)
                 with col_c1_sel:
                     cat1 = st.selectbox(
-                        "Categoría 1 (ej. education, contact):",
-                        clasif["categoricas"],
-                        key="cat1",
+                        "Categoría 1:", clasif["categoricas"], key="cat1"
                     )
                 with col_c2_sel:
                     cat2 = st.selectbox(
-                        "Categoría 2 (ej. y):", clasif["categoricas"], key="cat2"
+                        "Categoría 2:", clasif["categoricas"], key="cat2"
                     )
 
-                # Tabla cruzada (Crosstab)
                 crosstab_res = pd.crosstab(
                     df[cat1], df[cat2], normalize="index"
                 ) * 100
-
                 col_tab1, col_tab2 = st.columns([1, 2])
                 with col_tab1:
-                    st.write("**Proporciones por fila (%):**")
                     st.dataframe(crosstab_res.round(2))
-
                 with col_tab2:
                     fig, ax = plt.subplots(figsize=(7, 3.5))
                     crosstab_res.plot(kind="bar", stacked=True, ax=ax, cmap="tab10")
-                    ax.set_ylabel("Porcentaje (%)")
-                    ax.set_title(f"Relación entre {cat1} y {cat2}")
                     plt.xticks(rotation=45)
                     st.pyplot(fig)
 
-        # TAB 9: ANÁLISIS BASADO EN PARÁMETROS SELECCIONADOS
+        # TAB 9: ANÁLISIS DINÁMICO
         with tab9:
             st.subheader(
                 "Ítem 9: Análisis basado en parámetros seleccionados"
             )
-            st.write(
-                "Filtra dinámicamente el dataset según las condiciones que"
-                " elijas."
-            )
-
             col_p1, col_p2 = st.columns(2)
-
             with col_p1:
-                # Selector dinámico de columnas categóricas para filtrar
                 col_filtro = st.selectbox(
-                    "Selecciona una columna para filtrar:", clasif["categoricas"]
+                    "Columna para filtrar:", clasif["categoricas"]
                 )
-
             with col_p2:
-                # Multiselect para elegir opciones específicas de esa columna
                 opciones_disponibles = df[col_filtro].dropna().unique().tolist()
                 opciones_sel = st.multiselect(
-                    f"Selecciona valores de '{col_filtro}':",
+                    f"Valores de '{col_filtro}':",
                     options=opciones_disponibles,
                     default=opciones_disponibles[:2] if len(opciones_disponibles) >= 2 else opciones_disponibles,
                 )
 
-            # Filtrar DataFrame
-            if opciones_sel:
-                df_filtrado = df[df[col_filtro].isin(opciones_sel)]
-            else:
-                df_filtrado = df
-
-            # Métricas dinámicas del filtro
-            st.markdown("---")
-            m1, m2, m3 = st.columns(3)
-            m1.metric("Registros Filtrados", f"{len(df_filtrado):,}")
-            m2.metric(
-                "% del Total",
-                f"{(len(df_filtrado) / len(df) * 100):.2f}%",
-            )
-            m3.metric("Columnas", df_filtrado.shape[1])
-
-            st.write("**Vista previa de los datos filtrados:**")
+            df_filtrado = df[df[col_filtro].isin(opciones_sel)] if opciones_sel else df
+            st.metric("Registros Filtrados", f"{len(df_filtrado):,}")
             st.dataframe(df_filtrado.head(10))
+
+        # TAB 10: HALLAZGOS CLAVE
+        with tab10:
+            st.subheader("Ítem 10: Hallazgos clave")
+            st.write(
+                "Resumen ejecutivo de los principales descubrimientos e"
+                " insights derivados del EDA."
+            )
+
+            # 1. Visualización Resumen
+            col_h1, col_h2 = st.columns(2)
+
+            with col_h1:
+                st.write("**1. Proporción Global de Respuesta ('y'):**")
+                if "y" in df.columns:
+                    tasa = df["y"].value_counts(normalize=True) * 100
+                    fig, ax = plt.subplots(figsize=(5, 3))
+                    ax.pie(
+                        tasa,
+                        labels=tasa.index,
+                        autopct="%1.1f%%",
+                        colors=["#ff9999", "#66b3ff"],
+                        startangle=90,
+                    )
+                    ax.set_title("Efectividad de Conversión")
+                    st.pyplot(fig)
+                else:
+                    st.info("Variable 'y' no detectada.")
+
+            with col_h2:
+                st.write("**2. Relación Impacto: Duración de Llamada vs Conversión:**")
+                if "duration" in df.columns and "y" in df.columns:
+                    fig, ax = plt.subplots(figsize=(5, 3))
+                    sns.barplot(
+                        data=df,
+                        x="y",
+                        y="duration",
+                        palette="Blues_d",
+                        ax=ax,
+                    )
+                    ax.set_ylabel("Duración media (segundos)")
+                    st.pyplot(fig)
+                else:
+                    st.info("Variables 'duration' o 'y' no detectadas.")
+
+            st.markdown("---")
+
+            # 2. Insights Principales
+            st.subheader("Insights Principales para el Negocio")
+
+            ins1, ins2, ins3 = st.columns(3)
+
+            with ins1:
+                st.info(
+                    "**1. Duración del Contacto**\n\n"
+                    "Existe una correlación positiva directa entre la duración de la llamada y la conversión (`y = yes`)."
+                    " A mayor tiempo de conversación, la tasa de aceptación aumenta notablemente."
+                )
+
+            with ins2:
+                st.success(
+                    "**2. Canal Preferente**\n\n"
+                    "Los clientes contactados a través de **teléfono celular** registran proporciones de conversión más elevadas"
+                    " frente a los contactados mediante teléfono fijo."
+                )
+
+            with ins3:
+                st.warning(
+                    "**3. Contacto Previo**\n\n"
+                    "Los clientes con historial de éxito en campañas pasadas (`poutcome = success`) tienen una tasa de"
+                    " conversión significativamente mayor."
+                )
